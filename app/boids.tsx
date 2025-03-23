@@ -1,25 +1,46 @@
 import useMousePosition from "@/hooks/use-mouse-position";
-import { ThreeElement, ThreeElements, useFrame } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import React, { useRef } from "react";
-import { Mesh } from "three";
+import { ConeGeometry, Mesh, MeshBasicMaterial, Vector3 } from "three";
+
+const BOID_COUNT = 100;
+
+type Boid = Mesh<ConeGeometry, MeshBasicMaterial>;
 
 export default function Boids() {
-  const { x, y } = useMousePosition();
-  const ref = useRef<any>(null);
+  const refs = useRef(
+    Array.from({ length: BOID_COUNT }, () => React.createRef<Boid>())
+  );
 
-  useFrame(({ viewport }) => {
-    if (ref.current) {
-      ref.current.position.x = x / viewport.width;
-      ref.current.position.y = -y / viewport.height;
-    }
+  useFrame(({ viewport }, delta) => {
+    refs.current.forEach((ref, i) => {
+      if (!ref.current) return;
+      const boid = ref.current;
+      // Rotate the boid slightly in a random direction
+      boid.rotateOnAxis(
+        new Vector3(
+          Math.random() - 0.5,
+          Math.random() - 0.5,
+          Math.random() - 0.5
+        ).normalize(),
+        delta * 5
+      );
+      // Determine direction the boid is pointing in
+      const direction = new Vector3(0, 1, 0).applyQuaternion(boid.quaternion);
+
+      // Move the boid forward
+      boid.position.addScaledVector(direction, delta * 0.5);
+    });
   });
 
   return (
     <>
-      <mesh position={[x, y, 0]} ref={ref}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="skyblue" />
-      </mesh>
+      {refs.current.map((ref, index) => (
+        <mesh key={index} ref={ref}>
+          <coneGeometry args={[0.1, 0.3, 16]} rotateX={Math.PI / 2} />
+          <meshBasicMaterial color="skyblue" />
+        </mesh>
+      ))}
     </>
   );
 }

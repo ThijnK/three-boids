@@ -1,7 +1,7 @@
 "use client";
 
 import Boids from "@/app/boids";
-import { OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
+import { PerspectiveCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 
 export default function Background() {
