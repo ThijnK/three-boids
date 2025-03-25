@@ -13,13 +13,13 @@ import {
 
 // Boids simulation parameters
 const BOID_COUNT = 100;
-const MAX_SPEED = 0.05;
+const MAX_SPEED = 0.03;
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
 const COHESION_DISTANCE = 2;
-const SEPARATION_FORCE = 0.05;
+const SEPARATION_FORCE = 0.07;
 const ALIGNMENT_FORCE = 0.05;
-const COHESION_FORCE = 0.05;
+const COHESION_FORCE = 0.03;
 const BOUNDARY = 5;
 const BOUNDARY_FORCE = 0.1;
 
@@ -66,10 +66,15 @@ export default function Boids() {
     boids.forEach((boid, i) => {
       boid.acceleration.set(0, 0, 0);
 
+      // Calculate distance of each boid to each other boid once
+      const distances = boids.map((other) =>
+        boid.position.distanceTo(other.position)
+      );
+
       // Apply the three rules of boids
-      applySeparation(boid, boids);
-      applyAlignment(boid, boids);
-      applyCohesion(boid, boids);
+      applySeparation(boid, boids, distances);
+      applyAlignment(boid, boids, distances);
+      applyCohesion(boid, boids, distances);
 
       // Apply boundary forces to keep boids in view
       applyBoundary(boid);
@@ -99,13 +104,12 @@ export default function Boids() {
   });
 
   // Rule 1: Boids try to keep a small distance away from other boids
-  function applySeparation(boid: Boid, boids: Boid[]) {
+  function applySeparation(boid: Boid, boids: Boid[], distances: number[]) {
     const steer = new Vector3();
     let count = 0;
 
-    boids.forEach((other) => {
-      const distance = boid.position.distanceTo(other.position);
-
+    boids.forEach((other, i) => {
+      const distance = distances[i];
       if (distance > 0 && distance < SEPARATION_DISTANCE) {
         // Calculate vector pointing away from neighbor
         const diff = new Vector3().subVectors(boid.position, other.position);
@@ -125,13 +129,12 @@ export default function Boids() {
   }
 
   // Rule 2: Boids try to match velocity with nearby boids
-  function applyAlignment(boid: Boid, boids: Boid[]) {
+  function applyAlignment(boid: Boid, boids: Boid[], distances: number[]) {
     const steer = new Vector3();
     let count = 0;
 
-    boids.forEach((other) => {
-      const distance = boid.position.distanceTo(other.position);
-
+    boids.forEach((other, i) => {
+      const distance = distances[i];
       if (distance > 0 && distance < ALIGNMENT_DISTANCE) {
         steer.add(other.velocity);
         count++;
@@ -147,13 +150,12 @@ export default function Boids() {
   }
 
   // Rule 3: Boids try to move toward the center of nearby boids
-  function applyCohesion(boid: Boid, boids: Boid[]) {
+  function applyCohesion(boid: Boid, boids: Boid[], distances: number[]) {
     const center = new Vector3();
     let count = 0;
 
-    boids.forEach((other) => {
-      const distance = boid.position.distanceTo(other.position);
-
+    boids.forEach((other, i) => {
+      const distance = distances[i];
       if (distance > 0 && distance < COHESION_DISTANCE) {
         center.add(other.position);
         count++;
