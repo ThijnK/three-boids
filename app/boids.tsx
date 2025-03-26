@@ -17,6 +17,7 @@ import {
 // Boids simulation parameters
 const BOID_COUNT = 100;
 const MAX_SPEED = 0.03;
+const MAX_SPEED_MOUSE_ATTRACTION = 0.1; // Higher speed when attracted to mouse
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
 const COHESION_DISTANCE = 1.5;
@@ -24,6 +25,9 @@ const SEPARATION_FORCE = 0.07;
 const ALIGNMENT_FORCE = 0.05;
 const COHESION_FORCE = 0.03;
 const BOUNDARY_FORCE = 0.1;
+const MOUSE_ATTRACTION_FORCE = 0.08;
+const MOUSE_MIN_DISTANCE = 3; // Within this distance, boids behave normally
+const MOUSE_MAX_DISTANCE = 15; // Beyond this, maximum attraction
 
 type BoidMesh = Mesh<
   BufferGeometry<NormalBufferAttributes>,
@@ -42,11 +46,6 @@ export default function Boids() {
   const { x, y } = useMousePosition();
   const { width, height } = useWindowSize();
   const { viewport } = useThree();
-
-  useEffect(() => {
-    console.log(width, height);
-    console.log(viewport.width, viewport.height);
-  }, [viewport]);
 
   // Intialize boids
   const boids = useMemo(() => {
@@ -72,7 +71,36 @@ export default function Boids() {
     return geo;
   }, []);
 
+  // Reusable vectors for calculations
+  const sharedVectors = useMemo(
+    () => ({
+      diff: new Vector3(),
+      steer: new Vector3(),
+      center: new Vector3(),
+      mouse: new Vector3(),
+    }),
+    []
+  );
+
+  // Convert mouse position from screen coordinates to world coordinates
+  const updateMousePos = () => {
+    if (x === null || y === null || width === null || height === null)
+      return null;
+
+    // Calculate normalized device coordinates (NDC) from -1 to 1
+    const mouseX = (x / width) * 2 - 1;
+    const mouseY = -(y / height) * 2 + 1;
+
+    // Convert to world coordinates using viewport
+    return sharedVectors.mouse.set(
+      mouseX * (viewport.width / 2),
+      mouseY * (viewport.height / 2),
+      0
+    );
+  };
+
   useFrame((_, delta) => {
+    const mousePos = updateMousePos();
     boids.forEach((boid, i) => {
       boid.acceleration.set(0, 0, 0);
 
@@ -86,17 +114,37 @@ export default function Boids() {
       applyAlignment(boid, boids, distances);
       applyCohesion(boid, boids, distances);
 
+      // Apply mouse attraction if mouse position is available
+      const distToMouse = mousePos ? boid.position.distanceTo(mousePos) : null;
+      if (mousePos && distToMouse)
+        applyMouseAttraction(boid, mousePos, distToMouse);
+
       // Apply boundary forces to keep boids in view
       applyBoundary(boid);
 
       // Acceleration calculated based on the rules
       boid.velocity.add(boid.acceleration.multiplyScalar(delta));
 
-      // Limit speed
-      if (boid.velocity.length() > MAX_SPEED) {
-        boid.velocity.normalize().multiplyScalar(MAX_SPEED);
+      // Calculate maximum speed based on distance to mouse
+      let currentMaxSpeed = MAX_SPEED;
+      if (distToMouse) {
+        if (distToMouse > MOUSE_MIN_DISTANCE) {
+          const speedFactor = Math.min(
+            (distToMouse - MOUSE_MIN_DISTANCE) /
+              (MOUSE_MAX_DISTANCE - MOUSE_MIN_DISTANCE),
+            1
+          );
+          currentMaxSpeed =
+            MAX_SPEED + (MAX_SPEED_MOUSE_ATTRACTION - MAX_SPEED) * speedFactor;
+        }
       }
 
+      // Limit speed
+      if (boid.velocity.length() > currentMaxSpeed) {
+        boid.velocity.normalize().multiplyScalar(currentMaxSpeed);
+      }
+
+      // Update position based on velocity
       boid.position.add(boid.velocity);
 
       // Update the mesh
@@ -115,14 +163,15 @@ export default function Boids() {
 
   // Rule 1: Boids try to keep a small distance away from other boids
   function applySeparation(boid: Boid, boids: Boid[], distances: number[]) {
-    const steer = new Vector3();
+    const { diff, steer } = sharedVectors;
+    steer.set(0, 0, 0);
     let count = 0;
 
     boids.forEach((other, i) => {
       const distance = distances[i];
       if (distance > 0 && distance < SEPARATION_DISTANCE) {
         // Calculate vector pointing away from neighbor
-        const diff = new Vector3().subVectors(boid.position, other.position);
+        diff.subVectors(boid.position, other.position);
         diff.normalize().divideScalar(distance); // Weight by distance
         steer.add(diff);
         count++;
@@ -140,7 +189,8 @@ export default function Boids() {
 
   // Rule 2: Boids try to match velocity with nearby boids
   function applyAlignment(boid: Boid, boids: Boid[], distances: number[]) {
-    const steer = new Vector3();
+    const { steer } = sharedVectors;
+    steer.set(0, 0, 0);
     let count = 0;
 
     boids.forEach((other, i) => {
@@ -161,7 +211,8 @@ export default function Boids() {
 
   // Rule 3: Boids try to move toward the center of nearby boids
   function applyCohesion(boid: Boid, boids: Boid[], distances: number[]) {
-    const center = new Vector3();
+    const { center, steer } = sharedVectors;
+    center.set(0, 0, 0);
     let count = 0;
 
     boids.forEach((other, i) => {
@@ -176,16 +227,45 @@ export default function Boids() {
       center.divideScalar(count);
 
       // Create steering force towards center
-      const desired = new Vector3().subVectors(center, boid.position);
-      desired.normalize().multiplyScalar(COHESION_FORCE);
+      steer.subVectors(center, boid.position);
+      steer.normalize().multiplyScalar(COHESION_FORCE);
 
-      boid.acceleration.add(desired);
+      boid.acceleration.add(steer);
+    }
+  }
+
+  // Apply attraction force towards the mouse
+  function applyMouseAttraction(
+    boid: Boid,
+    mousePos: Vector3,
+    distToMouse: number
+  ) {
+    const { steer } = sharedVectors;
+    steer.set(0, 0, 0);
+
+    if (distToMouse > MOUSE_MIN_DISTANCE) {
+      // Calculate attraction strength based on distance
+      let attractionStrength = Math.min(
+        (distToMouse - MOUSE_MIN_DISTANCE) /
+          (MOUSE_MAX_DISTANCE - MOUSE_MIN_DISTANCE),
+        1
+      );
+
+      // Create steering vector towards mouse
+      steer.subVectors(mousePos, boid.position);
+      steer.normalize();
+
+      // Attraction force increases with distance
+      steer.multiplyScalar(MOUSE_ATTRACTION_FORCE * attractionStrength);
+
+      boid.acceleration.add(steer);
     }
   }
 
   // Keep boids within boundaries
   function applyBoundary(boid: Boid) {
-    const steer = new Vector3();
+    const { steer } = sharedVectors;
+    steer.set(0, 0, 0);
     const boundX = viewport.width / 2;
     const boundY = viewport.height / 2;
     const boundZ = 5; // Fixed value
