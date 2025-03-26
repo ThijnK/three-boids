@@ -13,12 +13,9 @@ const useMousePosition = () => {
 
   useEffect(() => {
     const handleMouseMove = (ev: MouseEvent) => {
-      const width = document.documentElement.clientWidth;
-      const height = document.documentElement.clientHeight;
-
       setPos({
-        x: ev.clientX - width / 2,
-        y: ev.clientY - height / 2,
+        x: ev.clientX,
+        y: ev.clientY,
       });
     };
 

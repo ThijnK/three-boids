@@ -1,7 +1,10 @@
 import useMousePosition from "@/hooks/use-mouse-position";
-import { useFrame } from "@react-three/fiber";
-import React, { useMemo, useRef } from "react";
+import useWindowSize from "@/hooks/use-window-size";
+import { useAspect, useBounds } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
+  BoxGeometry,
   BufferGeometry,
   ConeGeometry,
   Material,
@@ -16,11 +19,10 @@ const BOID_COUNT = 100;
 const MAX_SPEED = 0.03;
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
-const COHESION_DISTANCE = 2;
+const COHESION_DISTANCE = 1.5;
 const SEPARATION_FORCE = 0.07;
 const ALIGNMENT_FORCE = 0.05;
 const COHESION_FORCE = 0.03;
-const BOUNDARY = 5;
 const BOUNDARY_FORCE = 0.1;
 
 type BoidMesh = Mesh<
@@ -37,14 +39,22 @@ type Boid = {
 
 export default function Boids() {
   const ref = useRef<BoidMesh[]>([]);
+  const { x, y } = useMousePosition();
+  const { width, height } = useWindowSize();
+  const { viewport } = useThree();
+
+  useEffect(() => {
+    console.log(width, height);
+    console.log(viewport.width, viewport.height);
+  }, [viewport]);
 
   // Intialize boids
   const boids = useMemo(() => {
     return Array.from({ length: BOID_COUNT }, () => ({
       position: new Vector3(
-        Math.random() * BOUNDARY * 2 - BOUNDARY,
-        Math.random() * BOUNDARY * 2 - BOUNDARY,
-        Math.random() * BOUNDARY * 2 - BOUNDARY
+        Math.random() * 2,
+        Math.random() * 2,
+        Math.random() * 2
       ),
       velocity: new Vector3(
         Math.random() * 0.2 - 0.1,
@@ -176,15 +186,18 @@ export default function Boids() {
   // Keep boids within boundaries
   function applyBoundary(boid: Boid) {
     const steer = new Vector3();
+    const boundX = viewport.width / 2;
+    const boundY = viewport.height / 2;
+    const boundZ = 5; // Fixed value
 
-    if (boid.position.x < -BOUNDARY) steer.x = BOUNDARY_FORCE;
-    else if (boid.position.x > BOUNDARY) steer.x = -BOUNDARY_FORCE;
+    if (boid.position.x < -boundX) steer.x = BOUNDARY_FORCE;
+    else if (boid.position.x > boundX) steer.x = -BOUNDARY_FORCE;
 
-    if (boid.position.y < -BOUNDARY) steer.y = BOUNDARY_FORCE;
-    else if (boid.position.y > BOUNDARY) steer.y = -BOUNDARY_FORCE;
+    if (boid.position.y < -boundY) steer.y = BOUNDARY_FORCE;
+    else if (boid.position.y > boundY) steer.y = -BOUNDARY_FORCE;
 
-    if (boid.position.z < -BOUNDARY) steer.z = BOUNDARY_FORCE;
-    else if (boid.position.z > BOUNDARY) steer.z = -BOUNDARY_FORCE;
+    if (boid.position.z < -boundZ) steer.z = BOUNDARY_FORCE;
+    else if (boid.position.z > boundZ) steer.z = -BOUNDARY_FORCE;
 
     boid.acceleration.add(steer);
   }
@@ -201,6 +214,13 @@ export default function Boids() {
           <meshBasicMaterial color="skyblue" />
         </mesh>
       ))}
+      {/* Draw temporary red lines for where the edges of the window should be */}
+      <lineSegments>
+        <edgesGeometry
+          args={[new BoxGeometry(viewport.width, viewport.height, 10)]}
+        ></edgesGeometry>
+        <lineBasicMaterial color="red" />
+      </lineSegments>
     </>
   );
 }

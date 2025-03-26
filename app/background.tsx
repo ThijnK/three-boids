@@ -10,7 +10,7 @@ export default function Background() {
       <Canvas>
         <ambientLight intensity={0.5} />
         <Boids />
-        <PerspectiveCamera makeDefault position={[0, 0, 15]} />
+        <PerspectiveCamera makeDefault position={[0, 0, 20]} fov={40} />
       </Canvas>
     </div>
   );
