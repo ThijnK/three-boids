@@ -11,6 +11,7 @@ import {
   Mesh,
   NormalBufferAttributes,
   Object3DEventMap,
+  Quaternion,
   Vector3,
 } from "three";
 
@@ -21,13 +22,15 @@ const MAX_SPEED_MOUSE_ATTRACTION = 0.1; // Higher speed when attracted to mouse
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
 const COHESION_DISTANCE = 1.5;
-const SEPARATION_FORCE = 0.07;
-const ALIGNMENT_FORCE = 0.05;
-const COHESION_FORCE = 0.03;
+const SEPARATION_FORCE = 0.035;
+const ALIGNMENT_FORCE = 0.025;
+const COHESION_FORCE = 0.015;
 const BOUNDARY_FORCE = 0.1;
+const BOUNDARY_Z = 5; // Fixed value for Z boundary
 const MOUSE_ATTRACTION_FORCE = 0.08;
 const MOUSE_MIN_DISTANCE = 3; // Within this distance, boids behave normally
 const MOUSE_MAX_DISTANCE = 15; // Beyond this, maximum attraction
+const ROTATION_SMOOTHING = 0.1; // Smoothing factor for rotation
 
 type BoidMesh = Mesh<
   BufferGeometry<NormalBufferAttributes>,
@@ -51,9 +54,9 @@ export default function Boids() {
   const boids = useMemo(() => {
     return Array.from({ length: BOID_COUNT }, () => ({
       position: new Vector3(
-        Math.random() * 2,
-        Math.random() * 2,
-        Math.random() * 2
+        Math.random() * viewport.width - viewport.width / 2,
+        Math.random() * viewport.height - viewport.height / 2,
+        Math.random() * BOUNDARY_Z - BOUNDARY_Z / 2
       ),
       velocity: new Vector3(
         Math.random() * 0.2 - 0.1,
@@ -61,6 +64,7 @@ export default function Boids() {
         Math.random() * 0.2 - 0.1
       ),
       acceleration: new Vector3(),
+      quaternion: new Quaternion(),
     }));
   }, []);
 
@@ -78,6 +82,7 @@ export default function Boids() {
       steer: new Vector3(),
       center: new Vector3(),
       mouse: new Vector3(),
+      forward: new Vector3(0, 0, 1),
     }),
     []
   );
@@ -127,16 +132,14 @@ export default function Boids() {
 
       // Calculate maximum speed based on distance to mouse
       let currentMaxSpeed = MAX_SPEED;
-      if (distToMouse) {
-        if (distToMouse > MOUSE_MIN_DISTANCE) {
-          const speedFactor = Math.min(
-            (distToMouse - MOUSE_MIN_DISTANCE) /
-              (MOUSE_MAX_DISTANCE - MOUSE_MIN_DISTANCE),
-            1
-          );
-          currentMaxSpeed =
-            MAX_SPEED + (MAX_SPEED_MOUSE_ATTRACTION - MAX_SPEED) * speedFactor;
-        }
+      if (distToMouse && distToMouse > MOUSE_MIN_DISTANCE) {
+        const speedFactor = Math.min(
+          (distToMouse - MOUSE_MIN_DISTANCE) /
+            (MOUSE_MAX_DISTANCE - MOUSE_MIN_DISTANCE),
+          1
+        );
+        currentMaxSpeed =
+          MAX_SPEED + (MAX_SPEED_MOUSE_ATTRACTION - MAX_SPEED) * speedFactor;
       }
 
       // Limit speed
@@ -151,11 +154,14 @@ export default function Boids() {
       if (ref.current[i]) {
         ref.current[i].position.copy(boid.position);
 
-        // Make boid point in the direction it's moving
+        // Make boid point in the direction it's moving (gradually)
         if (boid.velocity.length() > 0.001) {
-          ref.current[i].lookAt(
-            new Vector3().addVectors(boid.position, boid.velocity)
+          boid.quaternion.setFromUnitVectors(
+            sharedVectors.forward,
+            boid.velocity.clone().normalize()
           );
+          // Slerp to the target quaternion for smooth rotation
+          ref.current[i].quaternion.slerp(boid.quaternion, ROTATION_SMOOTHING);
         }
       }
     });
@@ -268,7 +274,7 @@ export default function Boids() {
     steer.set(0, 0, 0);
     const boundX = viewport.width / 2;
     const boundY = viewport.height / 2;
-    const boundZ = 5; // Fixed value
+    const boundZ = BOUNDARY_Z;
 
     if (boid.position.x < -boundX) steer.x = BOUNDARY_FORCE;
     else if (boid.position.x > boundX) steer.x = -BOUNDARY_FORCE;
