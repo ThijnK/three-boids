@@ -17,8 +17,8 @@ import {
 
 // Boids simulation parameters
 const BOID_COUNT = 100;
-const MAX_SPEED = 0.03;
-const MAX_SPEED_MOUSE_ATTRACTION = 0.1; // Higher speed when attracted to mouse
+const MAX_SPEED = 0.05;
+const MAX_SPEED_MOUSE_ATTRACTION = 0.12; // Higher speed when attracted to mouse
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
 const COHESION_DISTANCE = 1.5;
@@ -27,8 +27,8 @@ const ALIGNMENT_FORCE = 0.025;
 const COHESION_FORCE = 0.015;
 const BOUNDARY_FORCE = 0.1;
 const BOUNDARY_Z = 5; // Fixed value for Z boundary
-const MOUSE_ATTRACTION_FORCE = 0.08;
-const MOUSE_MIN_DISTANCE = 3; // Within this distance, boids behave normally
+const MOUSE_ATTRACTION_FORCE = 0.1;
+const MOUSE_MIN_DISTANCE = 1; // Within this distance, boids behave normally
 const MOUSE_MAX_DISTANCE = 15; // Beyond this, maximum attraction
 const ROTATION_SMOOTHING = 0.1; // Smoothing factor for rotation
 
@@ -147,8 +147,9 @@ export default function Boids() {
         boid.velocity.normalize().multiplyScalar(currentMaxSpeed);
       }
 
-      // Update position based on velocity
-      boid.position.add(boid.velocity);
+      // Scale velocity by delta time and update position
+      const velocityDelta = boid.velocity.clone().multiplyScalar(delta * 100);
+      boid.position.add(velocityDelta);
 
       // Update the mesh
       if (ref.current[i]) {
