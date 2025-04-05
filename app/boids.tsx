@@ -2,7 +2,7 @@ import useMousePosition from "@/hooks/use-mouse-position";
 import useWindowSize from "@/hooks/use-window-size";
 import { useAspect, useBounds } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   BoxGeometry,
   BufferGeometry,
@@ -18,7 +18,7 @@ import {
 // Boids simulation parameters
 const BOID_COUNT = 100;
 const MAX_SPEED = 0.05;
-const MAX_SPEED_MOUSE_ATTRACTION = 0.12; // Higher speed when attracted to mouse
+const MAX_SPEED_MOUSE_ATTRACTION = 0.15; // Higher speed when attracted to mouse
 const SEPARATION_DISTANCE = 1;
 const ALIGNMENT_DISTANCE = 2;
 const COHESION_DISTANCE = 1.5;
@@ -46,7 +46,8 @@ type Boid = {
 
 export default function Boids() {
   const ref = useRef<BoidMesh[]>([]);
-  const { x, y } = useMousePosition();
+  const [isPaused, setIsPaused] = useState(false);
+  const { x, y, windowVisible } = useMousePosition();
   const { width, height } = useWindowSize();
   const { viewport } = useThree();
 
@@ -104,10 +105,24 @@ export default function Boids() {
     );
   };
 
+  useEffect(() => {
+    // Pause boids when window is not visible
+    // Unpause in useFrame
+    if (!windowVisible) {
+      setIsPaused(true);
+    }
+  }, [windowVisible]);
+
   useFrame((_, delta) => {
+    if (isPaused) {
+      setIsPaused(false);
+      return;
+    }
+
     const mousePos = updateMousePos();
     boids.forEach((boid, i) => {
       boid.acceleration.set(0, 0, 0);
+      if (boid.velocity.length() === 0) return; // Skip if velocity is zero
 
       // Calculate distance of each boid to each other boid once
       const distances = boids.map((other) =>

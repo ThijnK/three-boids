@@ -10,6 +10,7 @@ const useMousePosition = () => {
     x: 0,
     y: 0,
   });
+  const [windowVisible, setWindowVisible] = useState<boolean>(true);
 
   useEffect(() => {
     const handleMouseMove = (ev: MouseEvent) => {
@@ -19,12 +20,20 @@ const useMousePosition = () => {
       });
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    const handleVisibilityChange = () => {
+      setWindowVisible(!document.hidden);
+    };
 
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
-  return pos;
+  return { ...pos, windowVisible };
 };
 
 export default useMousePosition;
