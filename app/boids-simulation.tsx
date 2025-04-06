@@ -1,3 +1,4 @@
+import Boid, { BoidMesh } from "@/app/boid";
 import useMousePosition from "@/hooks/use-mouse-position";
 import useWindowSize from "@/hooks/use-window-size";
 import { useAspect, useBounds } from "@react-three/drei";
@@ -6,14 +7,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   BoxGeometry,
   BufferGeometry,
+  Color,
   ConeGeometry,
   Material,
   Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
   NormalBufferAttributes,
   Object3DEventMap,
   Quaternion,
   Vector3,
 } from "three";
+
+const DEBUG = false;
 
 // Boids simulation parameters
 const BOID_COUNT = 100;
@@ -32,19 +38,13 @@ const MOUSE_MIN_DISTANCE = 1; // Within this distance, boids behave normally
 const MOUSE_MAX_DISTANCE = 15; // Beyond this, maximum attraction
 const ROTATION_SMOOTHING = 0.1; // Smoothing factor for rotation
 
-type BoidMesh = Mesh<
-  BufferGeometry<NormalBufferAttributes>,
-  Material | Material[],
-  Object3DEventMap
-> | null;
-
 type Boid = {
   position: Vector3;
   velocity: Vector3;
   acceleration: Vector3;
 };
 
-export default function Boids() {
+export default function BoidsSimulation() {
   const ref = useRef<BoidMesh[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const { x, y, windowVisible } = useMousePosition();
@@ -67,13 +67,6 @@ export default function Boids() {
       acceleration: new Vector3(),
       quaternion: new Quaternion(),
     }));
-  }, []);
-
-  // Create a cone geometry for the boid
-  const geometry = useMemo(() => {
-    const geo = new ConeGeometry(0.2, 0.5, 8);
-    geo.rotateX(Math.PI / 2);
-    return geo;
   }, []);
 
   // Reusable vectors for calculations
@@ -307,22 +300,23 @@ export default function Boids() {
   return (
     <>
       {boids.map((boid, index) => (
-        <mesh
+        <Boid
           key={index}
-          ref={(el) => (ref.current[index] = el)}
+          ref={(el) => {
+            if (el) ref.current[index] = el;
+          }}
           position={boid.position}
-        >
-          <primitive object={geometry} attach="geometry" />
-          <meshBasicMaterial color="skyblue" />
-        </mesh>
+        />
       ))}
-      {/* Draw temporary red lines for where the edges of the window should be */}
-      <lineSegments>
-        <edgesGeometry
-          args={[new BoxGeometry(viewport.width, viewport.height, 10)]}
-        ></edgesGeometry>
-        <lineBasicMaterial color="red" />
-      </lineSegments>
+      {/* Draws lines of the box that boids are confined to */}
+      {DEBUG && (
+        <lineSegments>
+          <edgesGeometry
+            args={[new BoxGeometry(viewport.width, viewport.height, 10)]}
+          ></edgesGeometry>
+          <lineBasicMaterial color="red" />
+        </lineSegments>
+      )}
     </>
   );
 }
