@@ -1,23 +1,9 @@
 import Boid, { BoidMesh } from "@/app/boid";
 import useMousePosition from "@/hooks/use-mouse-position";
 import useWindowSize from "@/hooks/use-window-size";
-import { useAspect, useBounds } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  BoxGeometry,
-  BufferGeometry,
-  Color,
-  ConeGeometry,
-  Material,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  NormalBufferAttributes,
-  Object3DEventMap,
-  Quaternion,
-  Vector3,
-} from "three";
+import { BoxGeometry, Quaternion, Vector3 } from "three";
 
 const DEBUG = false;
 

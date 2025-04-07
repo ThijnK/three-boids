@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Thijn Kroon",
-  description: "",
+  title: "GA WEG!",
+  description: "Wat doe je hier?",
 };
 
 export default function RootLayout({

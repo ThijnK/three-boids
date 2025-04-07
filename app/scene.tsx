@@ -5,18 +5,17 @@ import { PerspectiveCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 
-export default function Background() {
+export default function Scene() {
   return (
     <div id="canvas-container" className="fixed inset-0">
       <Canvas>
         <ambientLight intensity={0.5} />
         <BoidsSimulation />
         <EffectComposer>
-          {/* Add a glowing effect for the boids */}
           <Bloom
-            intensity={1.3}
-            luminanceThreshold={0.5}
-            luminanceSmoothing={0.9}
+            intensity={0.8}
+            luminanceThreshold={0.6}
+            luminanceSmoothing={1.2}
             radius={1}
           />
         </EffectComposer>
