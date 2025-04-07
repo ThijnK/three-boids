@@ -1,3 +1,3 @@
-# Portfolio Website
+# GA WEG!
 
-This repository contains the code for my portfolio website.
+Next.js playground for experimenting with web technologies like Three.js.
