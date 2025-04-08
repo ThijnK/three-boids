@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GA WEG!",
-  description: "Wat doe je hier?",
+  title: "Boids",
+  description: "A flocking simulation using Three.js and React Three Fiber",
 };
 
 export default function RootLayout({
